@@ -1,0 +1,14 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_DB: yardi
+      POSTGRES_USER: yardi
+      POSTGRES_PASSWORD: yardi
+    volumes:
+      - pgdata_dev:/var/lib/postgresql/data
+
+volumes:
+  pgdata_dev:

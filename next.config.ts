@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  output: "standalone",
+  allowedDevOrigins: ["yardi.local.dmitrylabs.com", "dng.me"],
 };
 
 export default nextConfig;

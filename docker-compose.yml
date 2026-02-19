@@ -1,0 +1,74 @@
+services:
+  traefik:
+    image: traefik:v3.6
+    restart: always
+    command:
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      - --certificatesresolvers.le.acme.httpchallenge=true
+      - --certificatesresolvers.le.acme.httpchallenge.entrypoint=web
+      - --certificatesresolvers.le.acme.email=${LETSENCRYPT_EMAIL}
+      - --certificatesresolvers.le.acme.storage=/letsencrypt/acme.json
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - letsencrypt:/letsencrypt
+    networks:
+      - yardi
+
+  postgres:
+    image: postgres:17-alpine
+    restart: always
+    environment:
+      POSTGRES_DB: yardi
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - yardi
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  hub:
+    build: .
+    restart: always
+    environment:
+      NODE_ENV: production
+      AUTH_SECRET: ${AUTH_SECRET}
+      AUTH_TRUST_HOST: "true"
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      NEXT_PUBLIC_TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME}
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/yardi
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - yardi
+    labels:
+      - "traefik.enable=true"
+      # HTTPS
+      - "traefik.http.routers.hub.rule=Host(`yardi.dmitrylabs.com`)"
+      - "traefik.http.routers.hub.entrypoints=websecure"
+      - "traefik.http.routers.hub.tls.certresolver=le"
+      - "traefik.http.services.hub.loadbalancer.server.port=3000"
+      # HTTP → HTTPS redirect
+      - "traefik.http.routers.hub-http.rule=Host(`yardi.dmitrylabs.com`)"
+      - "traefik.http.routers.hub-http.entrypoints=web"
+      - "traefik.http.routers.hub-http.middlewares=redirect-https"
+      - "traefik.http.middlewares.redirect-https.redirectscheme.scheme=https"
+
+volumes:
+  letsencrypt:
+  pgdata:
+
+networks:
+  yardi:
+    driver: bridge

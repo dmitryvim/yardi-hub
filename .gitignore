@@ -32,6 +32,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -39,3 +40,46 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# IDE - IntelliJ IDEA
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# IDE - VS Code / Cursor
+.vscode/
+.cursor/
+*.code-workspace
+
+# OS
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# Turbo
+.turbo/
+
+# Playwright
+test-results/
+playwright-report/
+playwright/.cache/
+
+# Archives
+*.tgz
+*.tar.gz
+
+# Claude Code local settings
+.claude/settings.local.json
