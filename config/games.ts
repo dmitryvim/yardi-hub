@@ -2,14 +2,14 @@ import type { GameConfig } from "@/types/game";
 
 export const GAMES: GameConfig[] = [
   {
-    key: "dng",
-    name: "Ducks & Geese",
+    key: "tanki",
+    name: "Tanki",
     description:
-      "A multiplayer tile game. Control a karatist, protect your geese from wolves, and survive!",
-    icon: "/games/dng.svg",
-    color: "#27ae60",
+      "Fast-paced 2D multiplayer tanks action game. Destroy opponents and climb the leaderboard!",
+    icon: "/games/tanki.svg",
+    color: "#4a7c3f",
     multiplayer: true,
-    tags: ["multiplayer", "action", "survival"],
-    basePath: "/g/dng",
+    tags: ["multiplayer", "action", "shooter", "pvp"],
+    basePath: "/g/tanki",
   },
 ];

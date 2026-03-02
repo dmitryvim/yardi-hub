@@ -99,7 +99,7 @@ For local dev, run your game standalone on its own port and use nginx to route:
 
 ```nginx
 # Add to /opt/homebrew/etc/nginx/servers/yardi.local.dmitrylabs.com.conf
-location /g/mygame/ {
+location /g/mygame {
     proxy_pass http://127.0.0.1:3002;  # your game's dev port
     proxy_http_version 1.1;
     proxy_set_header Host $host;

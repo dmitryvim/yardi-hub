@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { GAMES } from "@/config/games";
 
 export default function GamesPage() {
@@ -18,9 +19,10 @@ export default function GamesPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {GAMES.map((game) => (
-            <div
+            <Link
               key={game.key}
-              className="rounded-lg border border-zinc-200 bg-white p-5 transition-colors hover:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-950 dark:hover:border-zinc-600"
+              href={game.basePath}
+              className="block rounded-lg border border-zinc-200 bg-white p-5 transition-colors hover:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-950 dark:hover:border-zinc-600"
             >
               <div className="flex items-center gap-3">
                 {game.icon && (
@@ -49,7 +51,7 @@ export default function GamesPage() {
                   {game.description}
                 </p>
               )}
-            </div>
+            </Link>
           ))}
         </div>
       )}
