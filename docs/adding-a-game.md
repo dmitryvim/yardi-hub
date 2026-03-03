@@ -70,14 +70,64 @@ const { payload } = await jwtDecrypt(cookieValue, encryptionKey);
 
 This approach works server-side (e.g., during WebSocket upgrade) and doesn't require an HTTP roundtrip.
 
-### 5. Add to docker-compose.yml
+### 5. Create a Dockerfile
+
+Provide a Dockerfile for production builds. Example for a Next.js game:
+
+```dockerfile
+FROM node:22-alpine AS base
+
+FROM base AS deps
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci
+
+FROM base AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+RUN npm run build
+
+FROM base AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+
+COPY --from=builder /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+USER nextjs
+EXPOSE 3000
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+CMD ["node", "server.js"]
+```
+
+### 6. Build and push the Docker image
+
+Images are hosted on GitHub Container Registry (GHCR).
+
+```bash
+# Authenticate (once)
+echo $GITHUB_TOKEN | docker login ghcr.io -u dmitryvim --password-stdin
+
+# Build and push
+cd /path/to/mygame
+docker build -t ghcr.io/dmitryvim/yardi-mygame:latest .
+docker push ghcr.io/dmitryvim/yardi-mygame:latest
+```
+
+Make the package public: https://github.com/dmitryvim?tab=packages → your package → **Package settings** → **Change visibility** → **Public**.
+
+### 7. Add to docker-compose.yml
 
 Add your game as a service in the hub's `docker-compose.yml`:
 
 ```yaml
   mygame:
-    build:
-      context: ../path-to-mygame
+    image: ghcr.io/dmitryvim/yardi-mygame:latest
     restart: always
     environment:
       AUTH_SECRET: ${AUTH_SECRET}   # same secret as hub
@@ -93,7 +143,19 @@ Add your game as a service in the hub's `docker-compose.yml`:
 
 Traefik routes `/g/mygame/*` to your container; everything else goes to the hub.
 
-### 6. Local development
+### 8. Deploy to server
+
+On the VPS:
+
+```bash
+cd ~/yardi
+docker compose pull
+docker compose up -d
+```
+
+See [deployment.md](deployment.md) for full server setup instructions.
+
+### 9. Local development
 
 For local dev, run your game standalone on its own port and use nginx to route:
 
@@ -131,5 +193,7 @@ The JWT token / session object contains:
 - [ ] Game serves under `/g/<key>/` base path
 - [ ] Session reading works (API call or JWT decryption)
 - [ ] Dockerfile created
+- [ ] Docker image built and pushed to GHCR
 - [ ] Service added to `docker-compose.yml` with Traefik labels
+- [ ] Deployed to server (`docker compose pull && docker compose up -d`)
 - [ ] Local nginx rule added for dev

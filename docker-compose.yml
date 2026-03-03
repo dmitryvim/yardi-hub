@@ -38,7 +38,7 @@ services:
       retries: 5
 
   hub:
-    build: .
+    image: ghcr.io/dmitryvim/yardi-hub:latest
     restart: always
     environment:
       NODE_ENV: production
@@ -64,6 +64,20 @@ services:
       - "traefik.http.routers.hub-http.entrypoints=web"
       - "traefik.http.routers.hub-http.middlewares=redirect-https"
       - "traefik.http.middlewares.redirect-https.redirectscheme.scheme=https"
+
+  tanki2:
+    image: ghcr.io/dmitryvim/yardi-tanki2:latest
+    restart: always
+    environment:
+      AUTH_SECRET: ${AUTH_SECRET}
+    networks:
+      - yardi
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.tanki2.rule=Host(`yardi.dmitrylabs.com`) && PathPrefix(`/g/tanki2`)"
+      - "traefik.http.routers.tanki2.entrypoints=websecure"
+      - "traefik.http.routers.tanki2.tls.certresolver=le"
+      - "traefik.http.services.tanki2.loadbalancer.server.port=3000"
 
 volumes:
   letsencrypt:
