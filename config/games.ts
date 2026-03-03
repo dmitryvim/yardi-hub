@@ -12,4 +12,15 @@ export const GAMES: GameConfig[] = [
     tags: ["multiplayer", "action", "shooter", "pvp"],
     basePath: "/g/tanki2",
   },
+  {
+    key: "ducks-and-geese",
+    name: "Ducks & Geese",
+    description:
+      "Multiplayer 2D karatist game. Protect your geese from wolves with a katana!",
+    icon: "/games/ducks-and-geese.svg",
+    color: "#e8a830",
+    multiplayer: true,
+    tags: ["multiplayer", "action", "survival"],
+    basePath: "/g/ducks-and-geese",
+  },
 ];

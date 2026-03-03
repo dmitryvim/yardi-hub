@@ -1,6 +1,7 @@
 services:
   traefik:
     image: traefik:v3.6
+    pull_policy: always
     restart: always
     command:
       - --providers.docker=true
@@ -22,6 +23,7 @@ services:
 
   postgres:
     image: postgres:17-alpine
+    pull_policy: always
     restart: always
     environment:
       POSTGRES_DB: yardi
@@ -37,19 +39,36 @@ services:
       timeout: 5s
       retries: 5
 
+  migrate:
+    image: ghcr.io/dmitryvim/yardi-hub:migrate
+    pull_policy: always
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/yardi
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - yardi
+    restart: "no"
+
   hub:
     image: ghcr.io/dmitryvim/yardi-hub:latest
+    pull_policy: always
     restart: always
     environment:
       NODE_ENV: production
       AUTH_SECRET: ${AUTH_SECRET}
       AUTH_TRUST_HOST: "true"
+      AUTH_URL: https://yardi.dmitrylabs.com
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME}
       NEXT_PUBLIC_TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME}
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/yardi
     depends_on:
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     networks:
       - yardi
     labels:
@@ -67,6 +86,7 @@ services:
 
   tanki2:
     image: ghcr.io/dmitryvim/yardi-tanki2:latest
+    pull_policy: always
     restart: always
     environment:
       AUTH_SECRET: ${AUTH_SECRET}
@@ -78,6 +98,21 @@ services:
       - "traefik.http.routers.tanki2.entrypoints=websecure"
       - "traefik.http.routers.tanki2.tls.certresolver=le"
       - "traefik.http.services.tanki2.loadbalancer.server.port=3000"
+
+  dng:
+    image: ghcr.io/dmitryvim/yardi-dng:latest
+    pull_policy: always
+    restart: always
+    environment:
+      AUTH_SECRET: ${AUTH_SECRET}
+    networks:
+      - yardi
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dng.rule=Host(`yardi.dmitrylabs.com`) && PathPrefix(`/g/ducks-and-geese`)"
+      - "traefik.http.routers.dng.entrypoints=websecure"
+      - "traefik.http.routers.dng.tls.certresolver=le"
+      - "traefik.http.services.dng.loadbalancer.server.port=3000"
 
 volumes:
   letsencrypt:

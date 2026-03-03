@@ -4,13 +4,12 @@ import { signIn } from "next-auth/react";
 import { useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 
-export function TelegramLoginButton() {
+export function TelegramLoginButton({ botUsername }: { botUsername: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") || "/";
 
   useEffect(() => {
-    const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME;
     if (!botUsername || !containerRef.current) return;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

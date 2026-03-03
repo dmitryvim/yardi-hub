@@ -24,16 +24,19 @@ echo $GITHUB_TOKEN | docker login ghcr.io -u dmitryvim --password-stdin
 
 ### 2. Build and push
 
-```bash
-# Hub
-cd ~/Projects/yardi/yardi-hub
-docker build -t ghcr.io/dmitryvim/yardi-hub:latest .
-docker push ghcr.io/dmitryvim/yardi-hub:latest
+Each project has a `deploy.sh` that builds, pushes, and deploys:
 
-# Tanki
+```bash
+# Hub (also builds migrate image)
+cd ~/Projects/yardi/yardi-hub
+./deploy.sh
+
+# Games
 cd ~/Projects/yardi/tanki2
-docker build -t ghcr.io/dmitryvim/yardi-tanki2:latest .
-docker push ghcr.io/dmitryvim/yardi-tanki2:latest
+./deploy.sh
+
+cd ~/Projects/yardi/ducks-and-geese
+./deploy.sh
 ```
 
 ### 3. Make packages public (first time only)
@@ -84,46 +87,54 @@ docker compose pull
 docker compose up -d
 ```
 
-This starts 4 services:
+The `migrate` service runs `drizzle-kit push` automatically before the hub starts. No need to apply schema manually.
+
+Services:
 
 | Service | Description |
 |---------|-------------|
 | **traefik** | Reverse proxy, automatic HTTPS via Let's Encrypt |
 | **postgres** | PostgreSQL 17 database |
+| **migrate** | Runs DB migrations, exits after completion |
 | **hub** | Yardi Hub at `yardi.dmitrylabs.com` |
 | **tanki2** | Tanki 2 game at `yardi.dmitrylabs.com/g/tanki2` |
+| **dng** | Ducks & Geese at `yardi.dmitrylabs.com/g/ducks-and-geese` |
 
-### 6. Apply database schema (first time)
-
-From your local machine, open an SSH tunnel and run drizzle-kit:
-
-```bash
-# Terminal 1: SSH tunnel
-ssh -L 5432:localhost:5432 your-vps
-
-# Terminal 2: push schema
-DATABASE_URL=postgresql://yardi:YOUR_PASSWORD@localhost:5432/yardi npx drizzle-kit push
-```
-
-### 7. Verify
+### 6. Verify
 
 ```bash
-docker compose ps              # all services should be "Up"
+docker compose ps              # all services should be "Up" (migrate should be "Exited (0)")
 docker compose logs -f hub     # check hub logs
 curl -I https://yardi.dmitrylabs.com
 ```
 
 ## Deploy updates
 
-Build, push, and restart — from your local machine:
+Use `deploy.sh` from the relevant project directory. It builds, pushes, copies docker-compose.yml, and restarts services.
 
 ```bash
-# Example: update hub
-cd ~/Projects/yardi/yardi-hub
-docker build -t ghcr.io/dmitryvim/yardi-hub:latest . && \
-docker push ghcr.io/dmitryvim/yardi-hub:latest && \
-ssh your-vps "cd ~/yardi && docker compose pull hub && docker compose up -d hub"
+# Update hub
+cd ~/Projects/yardi/yardi-hub && ./deploy.sh
+
+# Update a game (push image, then restart on server)
+cd ~/Projects/yardi/tanki2 && ./deploy.sh
+ssh ubuntu@yardi.dmitrylabs.com "cd ~/yardi && docker compose pull tanki2 && docker compose up -d --force-recreate tanki2"
 ```
+
+All images use `pull_policy: always` in docker-compose.yml, so `docker compose up -d` will pull the latest images.
+
+## Environment variables (hub)
+
+| Variable | Where | Purpose |
+|----------|-------|---------|
+| `AUTH_SECRET` | Server-side | Auth.js JWT encryption key |
+| `AUTH_TRUST_HOST` | Server-side | Set to `"true"` behind reverse proxy |
+| `AUTH_URL` | Server-side | Public URL (e.g., `https://yardi.dmitrylabs.com`) |
+| `TELEGRAM_BOT_TOKEN` | Server-side only | HMAC verification of Telegram login |
+| `TELEGRAM_BOT_USERNAME` | Server-side | Bot username, passed to login page at runtime |
+| `DATABASE_URL` | Server-side | PostgreSQL connection string |
+
+**Important**: `TELEGRAM_BOT_USERNAME` is read at runtime by the server-rendered login page (not via `NEXT_PUBLIC_*`). This avoids the need to bake it in at Docker build time.
 
 ## Troubleshooting
 
@@ -131,5 +142,9 @@ ssh your-vps "cd ~/yardi && docker compose pull hub && docker compose up -d hub"
 |-------|-----|
 | Let's Encrypt fails | Ensure DNS A record points to VPS, ports 80/443 open |
 | 502 Bad Gateway | `docker compose logs hub` — check env vars and DB connection |
+| Telegram login button missing | Check `TELEGRAM_BOT_USERNAME` is set in `.env` |
+| `Configuration` error after login | Check `docker compose logs hub` — likely DB tables missing (migrate service failed) |
+| Game returns 404 | Check game uses `standalone-config.ts` preload (see [adding-a-game.md](adding-a-game.md)) |
 | Telegram login fails | Verify bot domain is `yardi.dmitrylabs.com` in @BotFather |
 | DB connection refused | `docker compose ps postgres` — wait for healthcheck to pass |
+| Container not updating | Use `docker compose up -d --force-recreate <service>` |
